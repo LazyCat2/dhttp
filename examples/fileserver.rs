@@ -1,0 +1,64 @@
+use std::io;
+use std::path::Path;
+use std::fmt::Write;
+
+use dhttp::prelude::*;
+use dhttp::reqres::res;
+use dhttp::util::path;
+use tokio::fs;
+
+struct FileServer;
+impl HttpService for FileServer {
+    // TODO maybe switch to FilesService
+    async fn request(&self, route: &str, _req: &HttpRequest, _body: &mut dyn HttpRead) -> HttpResult {
+        // TODO urldecode
+        let path = path::sanitize(route)?;
+
+        let metadata = fs::metadata(&path).await?;
+
+        if metadata.is_dir() {
+            Ok(res::html(list_dir(route, &path).await?))
+        } else {
+            Ok(res::file(&path).await?)
+        }
+    }
+}
+
+async fn list_dir(route: &str, path: &Path) -> io::Result<String> {
+    let mut out = indoc::formatdoc!(r#"
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta name="viewport" content="width=device-width">
+        <title>Listing of {route}</title>
+        </head>
+        <body>
+        <h1>Listing of {route}</h1>
+    "#);
+
+    let mut entries = fs::read_dir(&path).await?;
+    while let Some(file) = entries.next_entry().await? {
+        if let Some(path) = path::encode(&file.path()) {
+            let mut path = format!("/{}", path.trim_start_matches("./").trim_start_matches(".%5C"));
+            let filetype = file.file_type().await?;
+            if filetype.is_dir() || filetype.is_symlink() {
+                path.push('/');
+            }
+            write!(&mut out, "<a href='{}'>{}</a><br>\n", path, file.file_name().display()).unwrap();
+        } else {
+            write!(&mut out, "<span style='color: red'>{}</span>", file.file_name().display()).unwrap();
+        }
+    }
+    out.push_str("</body>\n</html>\n");
+    Ok(out)
+}
+
+async fn http_main() -> io::Result<()> {
+    let mut server = HttpServer::new();
+    server.service(FileServer);
+    dhttp::serve_tcp("[::]:8080", server).await
+}
+
+fn main() -> io::Result<()> {
+    dhttp::tokio_rt()?.block_on(http_main())
+}
