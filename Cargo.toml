@@ -20,7 +20,7 @@ path = "../chrono_lite"
 
 [dependencies.tokio]
 version = "1.48"
-features = ["rt-multi-thread", "fs", "net", "io-util", "time", "signal", "sync"]
+features = ["rt-multi-thread", "fs", "net", "io-util", "time", "signal"]
 
 [dev-dependencies]
 indoc = "2.0" # examples/fileserver.rs
