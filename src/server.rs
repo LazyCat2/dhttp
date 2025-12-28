@@ -10,7 +10,7 @@ use tokio::net::TcpSocket;
 use socket2::SockRef;
 
 use crate::h1::{self, HttpRequestError};
-use crate::reqres::StatusCode;
+use crate::reqres::{HttpRequest, StatusCode};
 use crate::core::{HttpService, HttpServiceRaw, HttpErrorHandler, HttpErrorType, HttpLogger};
 use crate::core::connection::{HttpConnection, EmitContinue};
 use crate::services::{DefaultService, DefaultLogger, ErrorPageHandler};
@@ -83,7 +83,7 @@ impl HttpServer {
                 } else {
                     // Could not parse request, return Bad request
                     let res = self.error_handler.plain_code(StatusCode::BAD_REQUEST);
-                    h1::send(res, &mut conn).await?;
+                    h1::send(&HttpRequest::default(), res, &mut conn).await?;
                     return conn.shutdown().await;
                 }
             }
@@ -99,7 +99,7 @@ impl HttpServer {
             // These connections are not supported
             if req.version.major != 1 {
                 let res = self.error_handler.plain_code(StatusCode::HTTP_VERSION_NOT_SUPPORTED);
-                h1::send(res, &mut conn).await?;
+                h1::send(&req, res, &mut conn).await?;
                 return conn.shutdown().await;
             }
 
@@ -175,7 +175,7 @@ impl HttpServer {
             }
 
             // Now, send the response
-            h1::send(res, &mut conn).await?;
+            h1::send(&req, res, &mut conn).await?;
         }
         // Loop ended, we close the connection now
         conn.shutdown().await
@@ -209,11 +209,9 @@ pub async fn serve_tcp(addr: &str, server: impl Into<Arc<HttpServer>>) -> io::Re
     let server = server.into();
     let mut err_shown = false;
     loop {
-        // This way, shutdown is handled properly
+        // This way, shutdown is handled gracefully
         let result = Or::new(tcp.accept(), tokio::signal::ctrl_c()).await;
-        if let Err(_) = result {
-            break;
-        }
+        if result.is_err() { break; }
 
         match result.unwrap() {
             Ok((conn, _addr)) => {

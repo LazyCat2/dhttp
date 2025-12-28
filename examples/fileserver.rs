@@ -10,8 +10,7 @@ use tokio::fs;
 struct FileServer;
 impl HttpService for FileServer {
     // TODO maybe switch to FilesService
-    async fn request(&self, route: &str, _req: &HttpRequest, _body: &mut dyn HttpRead) -> HttpResult {
-        // TODO urldecode
+    async fn request(&self, route: &str, req: &HttpRequest, _body: &mut dyn HttpRead) -> HttpResult {
         let path = path::sanitize(route)?;
 
         let metadata = fs::metadata(&path).await?;
@@ -19,8 +18,16 @@ impl HttpService for FileServer {
         if metadata.is_dir() {
             Ok(res::html(list_dir(route, &path).await?))
         } else {
-            Ok(res::file(&path).await?)
+            Ok(res::file(req, &path).await?)
         }
+    }
+
+    fn filter(&self, _route: &str, req: &HttpRequest) -> HttpResult<()> {
+        if req.method != HttpMethod::Get && req.method != HttpMethod::Head {
+            return Err(StatusCode::METHOD_NOT_ALLOWED.into());
+        }
+        if req.len > 0 { return Err(StatusCode::REQUEST_ENTITY_TOO_LARGE.into()); }
+        Ok(())
     }
 }
 

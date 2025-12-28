@@ -2,7 +2,7 @@ use std::io;
 use std::fmt;
 
 use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::core::connection::HttpWrite;
 use crate::util::escape;
@@ -27,10 +27,10 @@ impl HttpBody {
     }
 
     /// Send this body into writer
-    pub async fn send(&mut self, conn: &mut dyn HttpWrite) -> io::Result<()> {
+    pub(crate) async fn send(&mut self, conn: &mut dyn HttpWrite) -> io::Result<()> {
         match self {
             HttpBody::Bytes(body) => { conn.write_all(body).await?; }
-            HttpBody::File { file, .. } => { tokio::io::copy(file, conn).await?; }
+            HttpBody::File { file, len } => { tokio::io::copy(&mut file.take(*len), conn).await?; }
         }
         Ok(())
     }

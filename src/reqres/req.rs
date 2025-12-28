@@ -1,5 +1,5 @@
 use std::fmt;
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr};
 
 use crate::reqres::HttpHeader;
 
@@ -97,5 +97,18 @@ impl HttpRequest {
             }
         }
         header
+    }
+}
+
+impl Default for HttpRequest {
+    fn default() -> HttpRequest {
+        HttpRequest {
+            method: HttpMethod::Get,
+            route: String::new(),
+            version: HttpVersion { major: 0, minor: 0 },
+            headers: vec![],
+            len: 0,
+            addr: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+        }
     }
 }

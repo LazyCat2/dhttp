@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use tokio::fs;
 
 use crate::core::{HttpService, HttpResult, HttpRead};
-use crate::reqres::{res, HttpRequest, StatusCode};
+use crate::reqres::{res, HttpRequest, HttpMethod, StatusCode};
 use crate::util::path;
 
 /// Hosts a directory with static files
@@ -20,7 +20,7 @@ impl FilesService {
 }
 
 impl HttpService for FilesService {
-    async fn request(&self, route: &str, _req: &HttpRequest, _body: &mut dyn HttpRead) -> HttpResult {
+    async fn request(&self, route: &str, req: &HttpRequest, _body: &mut dyn HttpRead) -> HttpResult {
         let path = self.path.join(path::sanitize(route)?);
 
         let metadata = fs::metadata(&path).await?;
@@ -28,7 +28,15 @@ impl HttpService for FilesService {
         if metadata.is_dir() {
             Err(StatusCode::NOT_FOUND.into())
         } else {
-            Ok(res::file(&path).await?)
+            Ok(res::file(req, &path).await?)
         }
+    }
+
+    fn filter(&self, _route: &str, req: &HttpRequest) -> HttpResult<()> {
+        if req.method != HttpMethod::Get && req.method != HttpMethod::Head {
+            return Err(StatusCode::METHOD_NOT_ALLOWED.into());
+        }
+        if req.len > 0 { return Err(StatusCode::REQUEST_ENTITY_TOO_LARGE.into()); }
+        Ok(())
     }
 }

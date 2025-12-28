@@ -73,7 +73,7 @@ pub(crate) async fn read(conn: impl HttpRead) -> Result<HttpRequest, HttpRequest
 }
 
 /// Send the request
-pub(crate) async fn send(mut res: HttpResponse, conn: &mut dyn HttpWrite) -> io::Result<()> {
+pub(crate) async fn send(req: &HttpRequest, mut res: HttpResponse, conn: &mut dyn HttpWrite) -> io::Result<()> {
     let code = res.code;
     let status = code.as_str();
     let mut buf = format!("HTTP/1.1 {code} {status}\r\n");
@@ -89,7 +89,8 @@ pub(crate) async fn send(mut res: HttpResponse, conn: &mut dyn HttpWrite) -> io:
     write!(&mut buf, "Content-Length: {}\r\n\r\n", res.body.content_length()).unwrap();
 
     conn.write_all(buf.as_bytes()).await?;
-    res.body.send(conn).await?;
+    // Don't send body on head requests
+    if req.method != HttpMethod::Head { res.body.send(conn).await?; }
 
     Ok(())
 }

@@ -3,7 +3,6 @@ use std::error::Error;
 
 use crate::core::{HttpError, HttpErrorType};
 
-// i wish we could just impl on type aliases instead of such newtype hell
 /// An HTTP status code
 #[derive(Debug, Clone, Copy)]
 pub struct StatusCode(pub u16);
@@ -19,12 +18,14 @@ impl StatusCode {
     pub fn as_str(&self) -> &'static str {
         match self.0 {
             200 => "OK",
+            206 => "Partial content",
             301 => "Moved permanently",
             400 => "Bad request",
             403 => "Forbidden",
             404 => "Not found",
             405 => "Method not allowed",
             413 => "Request entity too large",
+            416 => "Range not satisfiable",
             500 => "Internal server error",
             505 => "HTTP version not supported",
             _ => "Unknown",
@@ -37,6 +38,8 @@ impl StatusCode {
 
     /// 200
     pub const OK: StatusCode = StatusCode(200);
+    /// 206
+    pub const PARTIAL_CONTENT: StatusCode = StatusCode(206);
 
     // 3xx
 
@@ -55,6 +58,8 @@ impl StatusCode {
     pub const METHOD_NOT_ALLOWED: StatusCode = StatusCode(405);
     /// 413
     pub const REQUEST_ENTITY_TOO_LARGE: StatusCode = StatusCode(413);
+    /// 416
+    pub const RANGE_NOT_SATISFIABLE: StatusCode = StatusCode(416);
 
     // 5xx
 
