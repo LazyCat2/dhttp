@@ -8,7 +8,8 @@ use std::ffi::OsStr;
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
 
-use crate::util::urlencode;
+use percent_encoding_lite::Bitmask;
+
 use crate::core::{HttpError, HttpErrorType};
 use crate::reqres::StatusCode;
 
@@ -64,7 +65,7 @@ use crate::reqres::StatusCode;
 ///
 /// See [`DangerousPathError`] for details of these checks
 pub fn sanitize(route: &str) -> Result<PathBuf, DangerousPathError> {
-    let decoded = urlencode::decode(route);
+    let decoded = percent_encoding_lite::decode(route);
     #[cfg(windows)]
     return sanitize_win(str::from_utf8(&decoded).map_err(|_| DangerousPathError::InvalidCharacters)?);
     #[cfg(unix)]
@@ -151,16 +152,11 @@ impl HttpError for DangerousPathError {
 }
 
 /// Performs URL encoding for a given [`Path`] (lossy on Windows)
-///
-/// Unlike [`urlencode::encode`], this function also allows slash (`/`)
-///
-/// Gives `None` when path contains invalid UTF-8 on Windows
-pub fn encode(path: &Path) -> Option<String> {
+pub fn encode(path: &Path) -> String {
     #[cfg(windows)]
-//    return Some(urlencode::encode_base(&path.to_string_lossy(), true));
-    return Some(urlencode::encode_base(path.to_str()?.as_bytes(), true));
+    return percent_encoding_lite::encode(&path.to_string_lossy(), Bitmask::PATH);
     #[cfg(unix)]
-    return Some(urlencode::encode_base(path.as_os_str().as_bytes(), true));
+    return percent_encoding_lite::encode(path.as_os_str().as_bytes(), Bitmask::PATH);
     #[cfg(not(any(windows, unix)))]
     not_implemented
 }

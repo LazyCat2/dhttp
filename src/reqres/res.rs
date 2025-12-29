@@ -6,6 +6,8 @@ use std::path::Path;
 use tokio::io::AsyncSeekExt;
 use tokio::fs::File;
 
+use percent_encoding_lite::{is_encoded, encode, Bitmask};
+
 use crate::core::HttpResult;
 use crate::reqres::{HttpRequest, HttpHeader, HttpBody, StatusCode};
 use crate::util::httpdate;
@@ -69,10 +71,12 @@ pub fn json(json: impl Into<String>) -> HttpResponse {
 }
 
 /// HTTP redirect with the `Location` header
-///
-/// Always make sure that `dest` is urlencoded!
 pub fn redirect(dest: impl Into<String>) -> HttpResponse {
-    let dest = dest.into();
+    let mut dest = dest.into();
+    // To avoid XSS for URLs containing a double quote or back slash
+    if !is_encoded(&dest, Bitmask::URI) {
+        dest = encode(dest, Bitmask::URI);
+    }
     HttpResponse {
         code: StatusCode::MOVED_PERMANENTLY,
         headers: vec![HttpHeader { name: "Location".to_string(), value: dest.clone() }],

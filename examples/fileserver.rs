@@ -45,16 +45,13 @@ async fn list_dir(route: &str, path: &Path) -> io::Result<String> {
 
     let mut entries = fs::read_dir(&path).await?;
     while let Some(file) = entries.next_entry().await? {
-        if let Some(path) = path::encode(&file.path()) {
-            let mut path = format!("/{}", path.trim_start_matches("./").trim_start_matches(".%5C"));
-            let filetype = file.file_type().await?;
-            if filetype.is_dir() || filetype.is_symlink() {
-                path.push('/');
-            }
-            write!(&mut out, "<a href='{}'>{}</a><br>\n", path, file.file_name().display()).unwrap();
-        } else {
-            write!(&mut out, "<span style='color: red'>{}</span>", file.file_name().display()).unwrap();
+        let path = path::encode(&file.path());
+        let mut path = format!("/{}", path.trim_start_matches("./").trim_start_matches(".%5C"));
+        let filetype = file.file_type().await?;
+        if filetype.is_dir() || filetype.is_symlink() {
+            path.push('/');
         }
+        write!(&mut out, "<a href='{}'>{}</a><br>\n", path, file.file_name().display()).unwrap();
     }
     out.push_str("</body>\n</html>\n");
     Ok(out)
