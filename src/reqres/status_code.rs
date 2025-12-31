@@ -21,6 +21,7 @@ impl StatusCode {
             206 => "Partial content",
             301 => "Moved permanently",
             400 => "Bad request",
+            401 => "Unauthorized",
             403 => "Forbidden",
             404 => "Not found",
             405 => "Method not allowed",
@@ -50,6 +51,8 @@ impl StatusCode {
 
     /// 400
     pub const BAD_REQUEST: StatusCode = StatusCode(400);
+    /// 401
+    pub const UNAUTHORIZED: StatusCode = StatusCode(401);
     /// 403
     pub const FORBIDDEN: StatusCode = StatusCode(403);
     /// 404
