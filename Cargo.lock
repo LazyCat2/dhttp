@@ -11,6 +11,7 @@ checksum = "b35204fbdc0b3f4446b89fc1ac2cf84a8a68971995d0bf2e925ec7cd960f9cb3"
 [[package]]
 name = "chrono_lite"
 version = "0.1.0"
+source = "git+https://github.com/Neltharion01/chrono_lite#ba7f19b4754efd418b2e657a4a17d3310a2b75ff"
 
 [[package]]
 name = "dhttp"
@@ -63,6 +64,7 @@ dependencies = [
 [[package]]
 name = "percent_encoding_lite"
 version = "0.1.0"
+source = "git+https://github.com/Neltharion01/percent_encoding_lite#cd808ef771e696f7b4d73f87258f451371b70047"
 
 [[package]]
 name = "pin-project-lite"
