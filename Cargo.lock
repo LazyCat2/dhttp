@@ -64,7 +64,7 @@ dependencies = [
 [[package]]
 name = "percent_encoding_lite"
 version = "0.1.0"
-source = "git+https://github.com/Neltharion01/percent_encoding_lite#cd808ef771e696f7b4d73f87258f451371b70047"
+source = "git+https://github.com/Neltharion01/percent_encoding_lite#5a3ef69165cb923a8836b6bb0bdcc63979267799"
 
 [[package]]
 name = "pin-project-lite"

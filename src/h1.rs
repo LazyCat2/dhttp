@@ -5,10 +5,10 @@ use std::fmt::{self, Write};
 use std::string::FromUtf8Error;
 use std::net::{IpAddr, Ipv4Addr};
 
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
 
-use crate::reqres::{HttpRequest, HttpResponse, HttpHeader, HttpVersion, HttpMethod};
-use crate::core::connection::{HttpRead, HttpWrite};
+use crate::reqres::{HttpRequest, HttpResponse, HttpHeader, HttpVersion, HttpMethod, HttpBody};
+use crate::core::connection::{HttpRead, HttpConnection};
 
 fn parse_ver(ver: &str) -> Option<HttpVersion> {
     let mut split = ver.strip_prefix("HTTP/")?.split('.');
@@ -73,7 +73,7 @@ pub(crate) async fn read(conn: impl HttpRead) -> Result<HttpRequest, HttpRequest
 }
 
 /// Send the request
-pub(crate) async fn send(req: &HttpRequest, mut res: HttpResponse, conn: &mut dyn HttpWrite) -> io::Result<()> {
+pub(crate) async fn send(req: &HttpRequest, res: HttpResponse, conn: &mut dyn HttpConnection) -> io::Result<()> {
     let code = res.code;
     let status = code.as_str();
     let mut buf = format!("HTTP/1.1 {code} {status}\r\n");
@@ -86,11 +86,20 @@ pub(crate) async fn send(req: &HttpRequest, mut res: HttpResponse, conn: &mut dy
         write!(&mut buf, "Content-Type: {}\r\n", &res.content_type).unwrap();
     }
 
-    write!(&mut buf, "Content-Length: {}\r\n\r\n", res.body.content_length()).unwrap();
-
-    conn.write_all(buf.as_bytes()).await?;
     // Don't send body on head requests
-    if req.method != HttpMethod::Head { res.body.send(conn).await?; }
+    if req.method != HttpMethod::Head { return Ok(()); }
+
+    // Send last Content-Length header and the body
+    if let HttpBody::Bytes(bytes) = res.body {
+        write!(&mut buf, "Content-Length: {}\r\n\r\n", bytes.len()).unwrap();
+        conn.write_all(&bytes).await?;
+    } else if let HttpBody::File { file, len } = res.body {
+        write!(&mut buf, "Content-Length: {}\r\n\r\n", len).unwrap();
+        tokio::io::copy(&mut file.take(len), conn).await?;
+    } else if let HttpBody::Upgrade(mut handler) = res.body {
+        handler.upgrade_raw(conn).await?;
+        conn.shutdown().await?;
+    }
 
     Ok(())
 }

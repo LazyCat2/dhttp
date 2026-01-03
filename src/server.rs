@@ -61,17 +61,6 @@ impl Default for HttpServer {
 }
 
 impl HttpServer {
-// It seems H2 will not see its light before TLS
-// TODO
-// HttpBody::Upgrade(Box<dyn HttpUpgrade>)
-// trait HttpUpgrade {
-//     pub async fn upgrade(self, &mut dyn HttpConnection);
-// }
-// if res.is_upgrade() { connection_close = true; }
-// trait EventSource implements HttpUpgrade
-// trait WebSocket implements HttpUpgrade
-// trait Proxy implements HttpUpgrade (only meaningful for a possible http proxy based on dhttp, not part of api)
-
     async fn handle_connection(&self, mut conn: impl HttpConnection) -> io::Result<()> {
         let mut connection_close = false;
         while !connection_close {
@@ -121,7 +110,7 @@ impl HttpServer {
 
             // Before executing the service, we have to check if request is compatible
             // This is connection handler's responsibility
-            let mut res = match self.service.filter(&req.route, &req) {
+            let mut res = match self.service.filter_raw(&req.route, &req) {
                 Ok(()) => self.service.request_raw(&req.route, &req, &mut body).await,
                 Err(err) => Err(err),
             };

@@ -100,7 +100,7 @@ impl HttpService for Router {
 
     fn filter(&self, route: &str, req: &HttpRequest) -> HttpResult<()> {
         match self.find(route) {
-            Some((route, service)) => service.filter(route, req),
+            Some((route, service)) => service.filter_raw(route, req),
             None => Err(StatusCode::NOT_FOUND.into()),
         }
     }

@@ -1,11 +1,36 @@
 use std::io;
 use std::fmt;
+use std::pin::Pin;
 
 use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use crate::core::connection::HttpWrite;
+use crate::core::connection::HttpConnection;
 use crate::util::escape;
+
+/// Http protocol upgrade
+///
+/// Allows to access underlying TCP socket with your handler
+///
+/// Use in [`HttpBody::Upgrade`]. Only applicable to HTTP/1.1
+pub trait HttpUpgrade: Send {
+    /// Handles the upgrade
+    ///
+    /// Equivalent signature:
+    /// `async fn upgrade(&mut self, conn: &mut dyn HttpConnection) -> io::Result<()>`
+    fn upgrade(&mut self, conn: &mut dyn HttpConnection) -> impl Future<Output = io::Result<()>> + Send;
+}
+
+/// Dyn version of [`HttpUpgrade`]
+pub trait HttpUpgradeRaw: Send {
+    /// Handles the upgrade (dyn version)
+    fn upgrade_raw<'a>(&'a mut self, conn: &'a mut dyn HttpConnection) -> Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>;
+}
+
+impl<T: HttpUpgrade> HttpUpgradeRaw for T {
+    fn upgrade_raw<'a>(&'a mut self, conn: &'a mut dyn HttpConnection) -> Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>> {
+        Box::pin(self.upgrade(conn))
+    }
+}
 
 /// Body of the response
 pub enum HttpBody {
@@ -13,35 +38,16 @@ pub enum HttpBody {
     Bytes(Vec<u8>),
     /// File handle to read
     File { file: File, len: u64 },
-    // Stream(Box<dyn HttpStream>)
-    // Upgrade(Box<dyn HttpUpgrade>)
-}
-
-impl HttpBody {
-    /// Length of body in bytes
-    pub fn content_length(&self) -> u64 {
-        match self {
-            HttpBody::Bytes(v) => v.len() as u64,
-            HttpBody::File { len, .. } => *len,
-        }
-    }
-
-    /// Send this body into writer
-    pub(crate) async fn send(&mut self, conn: &mut dyn HttpWrite) -> io::Result<()> {
-        match self {
-            HttpBody::Bytes(body) => { conn.write_all(body).await?; }
-            HttpBody::File { file, len } => { tokio::io::copy(&mut file.take(*len), conn).await?; }
-        }
-        Ok(())
-    }
+    /// Protocol upgrade
+    Upgrade(Box<dyn HttpUpgradeRaw>),
 }
 
 impl fmt::Debug for HttpBody {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             HttpBody::Bytes(v) => write!(fmt, r#"HttpBody::Bytes(b"{}")"#, escape::to_utf8(v)),
-            // sigh. debug formatter for file struct sucks so much for both std and tokio
             HttpBody::File { file, len } => fmt.debug_struct("HttpBody::File").field("file", file).field("len", len).finish(),
+            HttpBody::Upgrade(_) => fmt.write_str("HttpBody::Upgrade(..)"),
         }
     }
 }

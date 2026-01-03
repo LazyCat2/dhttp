@@ -35,8 +35,8 @@ pub trait HttpService: Send + Sync + 'static {
 pub trait HttpServiceRaw: Send + Sync + 'static {
     /// Serve the request (dyn version)
     fn request_raw<'a>(&'a self, route: &'a str, req: &'a HttpRequest, body: &'a mut dyn HttpRead) -> Pin<Box<dyn Future<Output = HttpResult> + Send + 'a>>;
-    /// Checks if request is valid
-    fn filter(&self, route: &str, req: &HttpRequest) -> HttpResult<()>;
+    /// Checks if request is valid (dyn version)
+    fn filter_raw(&self, route: &str, req: &HttpRequest) -> HttpResult<()>;
 }
 
 impl<T: HttpService> HttpServiceRaw for T {
@@ -44,7 +44,7 @@ impl<T: HttpService> HttpServiceRaw for T {
         Box::pin(self.request(route, req, body))
     }
 
-    fn filter(&self, route: &str, req: &HttpRequest) -> HttpResult<()> {
+    fn filter_raw(&self, route: &str, req: &HttpRequest) -> HttpResult<()> {
         self.filter(route, req)
     }
 }
