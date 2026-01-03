@@ -87,13 +87,9 @@ pub(crate) async fn send(req: &HttpRequest, res: HttpResponse, conn: &mut dyn Ht
     }
 
     match &res.body {
-        HttpBody::Bytes(bytes) => {
-            write!(&mut buf, "Content-Length: {}", bytes.len()).unwrap();
-        },
-        HttpBody::File { len, .. } => {
-            write!(&mut buf, "Content-Length: {len}").unwrap();
-        },
-        _ => {},
+        HttpBody::Bytes(bytes) => write!(&mut buf, "Content-Length: {}", bytes.len()).unwrap(),
+        HttpBody::File { len, .. } => write!(&mut buf, "Content-Length: {}", len).unwrap(),
+        HttpBody::Upgrade(_) => {},
     };
     write!(&mut buf, "\r\n\r\n").unwrap();
 

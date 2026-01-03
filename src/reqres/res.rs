@@ -1,9 +1,8 @@
 //! HTTP response and its constructors
 
-use std::io::Read;
 use percent_encoding_lite::{is_encoded, encode, Bitmask};
 
-use crate::reqres::{HttpHeader, HttpBody, StatusCode, HttpUpgrade};
+use crate::reqres::{HttpHeader, HttpBody, StatusCode};
 use crate::reqres::sse::HttpSse;
 
 /// Your response
@@ -81,12 +80,7 @@ pub fn redirect(dest: impl Into<String>) -> HttpResponse {
 }
 
 pub fn sse(handler: impl HttpSse) -> HttpResponse {
-    HttpResponse {
-        code: StatusCode::OK,
-        headers: vec![],
-        body: HttpBody::Upgrade(Box::new(handler)),
-        content_type: "text/event-stream".into(),
-    }
+    HttpResponse::with_type("text/event-stream", HttpBody::Upgrade(Box::new(handler)))
 }
 
 pub use super::file::file;
