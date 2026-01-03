@@ -17,6 +17,7 @@ impl StatusCode {
     /// ```
     pub fn as_str(&self) -> &'static str {
         match self.0 {
+            101 => "Switching Protocols",
             200 => "OK",
             206 => "Partial content",
             301 => "Moved permanently",
@@ -35,6 +36,11 @@ impl StatusCode {
 }
 
 impl StatusCode {
+    // 1xx
+
+    /// 101
+    pub const SWITCHING_PROTOCOLS: StatusCode = StatusCode(101);
+
     // 2xx
 
     /// 200

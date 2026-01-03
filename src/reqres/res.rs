@@ -1,11 +1,14 @@
 //! HTTP response and its constructors
 
+use std::io::Read;
 use percent_encoding_lite::{is_encoded, encode, Bitmask};
 
-use crate::reqres::{HttpHeader, HttpBody, StatusCode};
+use crate::reqres::{HttpHeader, HttpBody, StatusCode, HttpUpgrade};
+use crate::reqres::sse::HttpSse;
 
 /// Your response
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct HttpResponse {
     pub code: StatusCode,
     pub headers: Vec<HttpHeader>,
@@ -74,6 +77,15 @@ pub fn redirect(dest: impl Into<String>) -> HttpResponse {
         headers: vec![HttpHeader { name: "Location".to_string(), value: dest.clone() }],
         body: format!("<a href=\"{dest}\">Click here if you weren't redirected</a>\n").into(),
         content_type: "text/html; charset=utf-8".to_string(),
+    }
+}
+
+pub fn sse(handler: impl HttpSse) -> HttpResponse {
+    HttpResponse {
+        code: StatusCode::OK,
+        headers: vec![],
+        body: HttpBody::Upgrade(Box::new(handler)),
+        content_type: "text/event-stream".into(),
     }
 }
 
